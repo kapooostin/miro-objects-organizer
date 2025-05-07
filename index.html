@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Miro Item Organizer</title>
+    <script src="https://miro.com/app/static/sdk/v2/miro.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles if needed, though Tailwind should handle most */
+        body {
+            font-family: "Inter", sans-serif; /* Use Inter font */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh; /* Center content vertically */
+            background-color: #f0f0f0; /* Light background */
+            padding: 16px; /* Add some padding */
+        }
+        .container {
+            background-color: #ffffff; /* White background for the container */
+            padding: 24px;
+            border-radius: 12px; /* Rounded corners */
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1); /* Add a subtle shadow */
+            text-align: center; /* Center content inside container */
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <h1 class="text-2xl font-bold mb-6">Miro Item Organizer</h1>
+
+        <p class="text-gray-700 mb-6">
+            Select the items you want to organize on the board, then click the button below.
+            Items will be stacked vertically, aligned left, and ordered by name (or ID).
+        </p>
+
+        <button id="organizeButton"
+                class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-md transition duration-300 ease-in-out transform hover:scale-105">
+            Organize Selected Items
+        </button>
+    </div>
+
+    <script>
+        /**
+         * Organizes selected Miro items into a vertical stack using Miro SDK v2.
+         * Items are aligned to the left and ordered by name (or ID if no name).
+         * There is zero gap between stacked items.
+         */
+        async function organizeSelectedItems() {
+          try {
+            // 1. Get the currently selected items using SDK v2
+            const selectedItems = await miro.board.getSelection();
+
+            // Check if any items are selected
+            if (selectedItems.length === 0) {
+              console.log("No items selected.");
+              // Show a message to the user via Miro SDK v2 notifications
+              miro.board.ui.notifications.showInfo("Please select items to organize.");
+              return;
+            }
+
+            // 2. Sort the selected items
+            // Sort by name (case-insensitive) if available, otherwise by ID
+            selectedItems.sort((a, b) => {
+              const nameA = a.name ? a.name.toLowerCase() : a.id;
+              const nameB = b.name ? b.name.toLowerCase() : b.id;
+
+              if (nameA < nameB) {
+                return -1;
+              }
+              if (nameA > nameB) {
+                return 1;
+              }
+              return 0; // names or IDs are equal
+            });
+
+            // 3. Calculate new positions
+            // Find the minimum x-coordinate for left alignment
+            const minX = Math.min(...selectedItems.map(item => item.x));
+
+            // Initialize the current y-coordinate for stacking
+            // Start from the minimum y-coordinate of the selected items
+            const minY = Math.min(...selectedItems.map(item => item.y));
+            let currentY = minY;
+
+            // Prepare the updates array
+            const updates = [];
+
+            // Iterate through sorted items to calculate new positions
+            for (const item of selectedItems) {
+              // Add the update object for the current item
+              updates.push({
+                id: item.id,
+                x: minX, // Align to the minimum x-coordinate
+                y: currentY, // Set the current y-position
+              });
+
+              // Increment the current y-coordinate for the next item
+              // Add the item's height (assuming height is available for the item type)
+              // Note: Some item types might not have a direct 'height' property or might have different bounding box calculations.
+              // This assumes standard items like shapes, sticky notes, etc.
+              // For more complex items or groups, you might need to get bounding box information.
+              // For most common items, item.bounds.height is reliable.
+              if (item.bounds && item.bounds.height !== undefined) {
+                 currentY += item.bounds.height;
+              } else if (item.height !== undefined) { // Fallback for items with direct height
+                 currentY += item.height;
+              } else {
+                 // If height is not easily available, you might need a different strategy
+                 // or handle specific item types. For simplicity, we'll log a warning
+                 // and add a default spacing if height is unknown.
+                 console.warn(`Could not determine height for item ID ${item.id}. Using default spacing.`);
+                 currentY += 100; // Default spacing if height is unknown
+              }
+            }
+
+            // 4. Update the items on the board using SDK v2
+            await miro.board.update(updates);
+
+            console.log("Items organized successfully.");
+            miro.board.ui.notifications.showInfo("Items organized!"); // Use SDK v2 notification
+
+          } catch (error) {
+            console.error("Error organizing items:", error);
+            miro.board.ui.notifications.showError("Failed to organize items."); // Use SDK v2 notification
+          }
+        }
+
+        // Add event listener to the button to trigger the function
+        document.getElementById('organizeButton').addEventListener('click', organizeSelectedItems);
+
+    </script>
+
+</body>
+</html>
