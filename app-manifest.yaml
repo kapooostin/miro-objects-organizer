@@ -1,0 +1,7 @@
+# See https://developers.miro.com/docs/app-manifest on how to use this
+appName: Stack items
+sdkUri: "http://localhost:3000"
+# sdkVersion: SDK_V2
+scopes:
+  - boards:read
+  - boards:write
