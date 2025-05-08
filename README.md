@@ -1,1 +1,1 @@
-# miro-objects-organizer
+# Stack items in Miro
